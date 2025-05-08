@@ -1,5 +1,5 @@
 from app.models import User, Scan, HeaderResult
-from app.db import SessionLocal
+from app.db import SessionLocal import requests
 
 def create_user(username: str, email: str, password_hash: str):
     session = SessionLocal()
@@ -76,3 +76,22 @@ def create_header_result(scan_id: int, header_name: str, header_value: str):
         raise e
     finally:
         session.close()
+
+def analyze_headers(url: str) -> dict:
+    try:
+        response = requests.get(url, timeout=5)
+        headers = response.headers
+
+        security_headers = [
+            "Strict-Transport-Security",
+            "Content-Security-Policy",
+            "X-Frame-Options",
+            "X-Content-Type-Options",
+            "Referrer-Policy",
+            "Permissions-Policy"
+        ]
+
+        result = {h: headers.get(h, "Missing") for h in security_headers}
+        return result
+    except Exception as e:
+        return {"error": str(e)}
