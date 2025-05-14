@@ -1,5 +1,6 @@
 from app.models import User, Scan, HeaderResult
-from app.db import SessionLocal import requests
+from app.db import SessionLocal 
+import requests
 
 def create_user(username: str, email: str, password_hash: str):
     session = SessionLocal()

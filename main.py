@@ -1,9 +1,13 @@
 from fastapi import FastAPI
+from app.routes import users, scans
+from app.services import analyze_headers  # import the service function
 
-# Create the FastAPI app
 app = FastAPI()
 
-# Placeholder test route
+# Register routers
+app.include_router(users.router)
+app.include_router(scans.router)
+
 @app.get("/")
 def read_root():
     return {"message": "Security Headers Analyzer is live"}
