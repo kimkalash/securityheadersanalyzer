@@ -1,25 +1,32 @@
 from fastapi import APIRouter, HTTPException
-from app.services import create_user, get_user_by_id
+from pydantic import BaseModel
+from app.controllers.user_controller import register_user, read_user, fetch_user_by_id
+from app.services import get_user_by_id
+from app.db import SessionLocal
+from app.models import User
 
 router = APIRouter()
 
+# ✅ Request schema for registration
+class UserRegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+# ✅ POST /users — Register a new user using controller logic
 @router.post("/users")
-def register_user(username: str, email: str, password_hash: str):
-    user = create_user(username, email, password_hash)
-    return {"message": "User created", "user": user.id}
+def register_user_route(data: UserRegisterRequest):
+    return register_user(
+        username=data.username,
+        email=data.email,
+        password=data.password
+    )
 
 @router.get("/users/{user_id}")
 def read_user(user_id: int):
-    user = get_user_by_id(user_id)
-    if user:
-        return {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "created_at": user.created_at
-        }
-    return {"error": "User not found"}
+    return fetch_user_by_id(user_id)
 
+# ✅ DELETE /users/{user_id} — Delete user by ID
 @router.delete("/users/{user_id}")
 def delete_user(user_id: int):
     session = SessionLocal()
@@ -36,6 +43,7 @@ def delete_user(user_id: int):
     finally:
         session.close()
 
+# ✅ PUT /users/{user_id} — Update user info
 @router.put("/users/{user_id}")
 def update_user(user_id: int, username: str = None, email: str = None):
     session = SessionLocal()
