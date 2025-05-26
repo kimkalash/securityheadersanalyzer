@@ -1,51 +1,48 @@
-from fastapi import APIRouter
-from app.services import create_scan, get_user_scans
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
+from app.services import run_scan_and_analyze, get_user_scans, delete_scan, update_scan
 
 router = APIRouter()
 
+# ✅ Request schema
+class ScanCreateRequest(BaseModel):
+    user_id: int
+    url: str
+
+class ScanUpdateRequest(BaseModel):
+    url: str
+
+# ✅ POST /scans — Full scan
 @router.post("/scans")
-def run_scan(user_id: int, url: str):
-    scan = create_scan(user_id, url)
-    return {"message": "Scan created", "scan_id": scan.id}
-
-@router.get("/scans/{user_id}")
-def list_user_scans(user_id: int):
-    scans = get_user_scans(user_id)
-    return [
-        {
-            "scan_id": s.id,
-            "url": s.scan_url,
-            "date": s.scan_date
-        } for s in scans
-    ]
-
-@router.delete("/scans/{scan_id}")
-def delete_scan(scan_id: int):
-    session = SessionLocal()
+def create_scan_route(data: ScanCreateRequest):
     try:
-        scan = session.query(Scan).filter(Scan.id == scan_id).first()
-        if not scan:
-            raise HTTPException(status_code=404, detail="Scan not found")
-        session.delete(scan)
-        session.commit()
+        result = run_scan_and_analyze(data.user_id, data.url)
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+# ✅ GET /scans/{user_id}
+@router.get("/scans/{user_id}")
+def list_scans(user_id: int):
+    try:
+        return get_user_scans(user_id)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+# ✅ DELETE /scans/{scan_id}
+@router.delete("/scans/{scan_id}")
+def delete_scan_route(scan_id: int):
+    try:
+        delete_scan(scan_id)
         return {"message": f"Scan {scan_id} deleted"}
     except Exception as e:
-        session.rollback()
-        raise e
-    finally:
-        session.close()
+        raise HTTPException(status_code=404, detail=str(e))
+
+# ✅ PUT /scans/{scan_id}
 @router.put("/scans/{scan_id}")
-def update_scan(scan_id: int, url: str):
-    session = SessionLocal()
+def update_scan_route(scan_id: int, data: ScanUpdateRequest):
     try:
-        scan = session.query(Scan).filter(Scan.id == scan_id).first()
-        if not scan:
-            raise HTTPException(status_code=404, detail="Scan not found")
-        scan.scan_url = url
-        session.commit()
-        return {"message": "Scan updated", "scan_id": scan.id}
+        update_scan(scan_id, data.url)
+        return {"message": "Scan updated"}
     except Exception as e:
-        session.rollback()
-        raise e
-    finally:
-        session.close()
+        raise HTTPException(status_code=404, detail=str(e))

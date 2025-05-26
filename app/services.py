@@ -1,6 +1,7 @@
 from app.models import User, Scan, HeaderResult
 from app.db import SessionLocal 
 import requests
+from contextlib import contextmanager
 
 def create_user(username: str, email: str, password_hash: str):
     session = SessionLocal()
@@ -96,3 +97,56 @@ def analyze_headers(url: str) -> dict:
         return result
     except Exception as e:
         return {"error": str(e)}
+@contextmanager
+def get_db_session():
+    session = SessionLocal()
+    try:
+        yield session
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+def run_scan_and_analyze(user_id: int, url: str):
+    from datetime import datetime
+    with get_db_session() as session:
+        # 1. Create scan record
+        new_scan = Scan(user_id=user_id, scan_url=url, scan_date=datetime.utcnow())
+        session.add(new_scan)
+        session.flush()  # get scan.id without commit
+
+        # 2. Analyze headers
+        try:
+            response = requests.get(url, timeout=5)
+            headers = response.headers
+        except Exception as e:
+            raise Exception(f"Failed to fetch headers: {str(e)}")
+
+        # 3. Store results
+        security_headers = [
+            "Strict-Transport-Security",
+            "Content-Security-Policy",
+            "X-Frame-Options",
+            "X-Content-Type-Options",
+            "Referrer-Policy",
+            "Permissions-Policy"
+        ]
+        for header in security_headers:
+            value = headers.get(header, "Missing")
+            session.add(HeaderResult(scan_id=new_scan.id, header_name=header, header_value=value))
+
+        return {"scan_id": new_scan.id, "url": url, "headers": {h: headers.get(h, 'Missing') for h in security_headers}}
+def delete_scan(scan_id: int):
+    with get_db_session() as session:
+        scan = session.query(Scan).filter(Scan.id == scan_id).first()
+        if not scan:
+            raise Exception("Scan not found")
+        session.delete(scan)
+
+def update_scan(scan_id: int, url: str):
+    with get_db_session() as session:
+        scan = session.query(Scan).filter(Scan.id == scan_id).first()
+        if not scan:
+            raise Exception("Scan not found")
+        scan.scan_url = url

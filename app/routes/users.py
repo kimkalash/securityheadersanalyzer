@@ -1,64 +1,57 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
-from app.controllers.user_controller import register_user, read_user, fetch_user_by_id
-from app.services import get_user_by_id
-from app.db import SessionLocal
-from app.models import User
+from app.services import create_user, get_user_by_id, update_user, delete_user
 
 router = APIRouter()
 
-# ✅ Request schema for registration
 class UserRegisterRequest(BaseModel):
     username: str
     email: str
-    password: str
+    password_hash: str
 
-# ✅ POST /users — Register a new user using controller logic
+class UserUpdateRequest(BaseModel):
+    username: str | None = None
+    email: str | None = None
+
+# ✅ POST /users
 @router.post("/users")
-def register_user_route(data: UserRegisterRequest):
-    return register_user(
-        username=data.username,
-        email=data.email,
-        password=data.password
-    )
+def register_user(data: UserRegisterRequest):
+    try:
+        user = create_user(data.username, data.email, data.password_hash)
+        return {"message": "User created", "user_id": user.id}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
+# ✅ GET /users/{user_id}
 @router.get("/users/{user_id}")
-def read_user(user_id: int):
-    return fetch_user_by_id(user_id)
-
-# ✅ DELETE /users/{user_id} — Delete user by ID
-@router.delete("/users/{user_id}")
-def delete_user(user_id: int):
-    session = SessionLocal()
+def get_user(user_id: int):
     try:
-        user = session.query(User).filter(User.id == user_id).first()
+        user = get_user_by_id(user_id)
         if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        session.delete(user)
-        session.commit()
-        return {"message": f"User {user_id} deleted"}
+            raise Exception("User not found")
+        return {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "created_at": user.created_at
+        }
     except Exception as e:
-        session.rollback()
-        raise e
-    finally:
-        session.close()
+        raise HTTPException(status_code=404, detail=str(e))
 
-# ✅ PUT /users/{user_id} — Update user info
+# ✅ PUT /users/{user_id}
 @router.put("/users/{user_id}")
-def update_user(user_id: int, username: str = None, email: str = None):
-    session = SessionLocal()
+def update_user_route(user_id: int, data: UserUpdateRequest):
     try:
-        user = session.query(User).filter(User.id == user_id).first()
-        if not user:
-            raise HTTPException(status_code=404, detail="User not found")
-        if username:
-            user.username = username
-        if email:
-            user.email = email
-        session.commit()
-        return {"message": "User updated", "user_id": user.id}
+        update_user(user_id, data.username, data.email)
+        return {"message": "User updated"}
     except Exception as e:
-        session.rollback()
-        raise e
-    finally:
-        session.close()
+        raise HTTPException(status_code=404, detail=str(e))
+
+# ✅ DELETE /users/{user_id}
+@router.delete("/users/{user_id}")
+def delete_user_route(user_id: int):
+    try:
+        delete_user(user_id)
+        return {"message": "User deleted"}
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
