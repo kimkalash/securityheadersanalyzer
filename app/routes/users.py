@@ -25,18 +25,17 @@ def register_user(data: UserRegisterRequest):
 # ✅ GET /users/{user_id}
 @router.get("/users/{user_id}")
 def get_user(user_id: int):
-    try:
-        user = get_user_by_id(user_id)
-        if not user:
-            raise Exception("User not found")
-        return {
-            "id": user.id,
-            "username": user.username,
-            "email": user.email,
-            "created_at": user.created_at
-        }
-    except Exception as e:
-        raise HTTPException(status_code=404, detail=str(e))
+    user = get_user_by_id(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    return {
+        "id": user.id,
+        "username": user.username,
+        "email": user.email,
+        "created_at": user.created_at
+    }
+
 
 # ✅ PUT /users/{user_id}
 @router.put("/users/{user_id}")
