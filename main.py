@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from app.utils.responses import error_response
 from fastapi.exceptions import RequestValidationError
 from fastapi.exception_handlers import request_validation_exception_handler
+from app.routes import auth_routes
 
 app = FastAPI()
 @app.exception_handler(HTTPException)
@@ -45,4 +46,5 @@ def read_root():
 def analyze(url: str):
     result = analyze_headers(url)
     return {"result": result}
+app.include_router(auth_routes.router)
 

@@ -3,17 +3,18 @@ from app.db import SessionLocal
 import requests
 from contextlib import contextmanager
 
-def create_user(username: str, email: str, password_hash: str):
+def create_user(username: str, email: str, plain_password: str):
     session = SessionLocal()
     try:
+        hashed_pw = hash_password(plain_password)  # 🔐 Secure hashing
         new_user = User(
             username=username,
             email=email,
-            password_hash=password_hash
+            password_hash=hashed_pw
         )
         session.add(new_user)
         session.commit()
-        session.refresh(new_user)  # Refresh to get ID and timestamp
+        session.refresh(new_user)
         return new_user
     except Exception as e:
         session.rollback()
