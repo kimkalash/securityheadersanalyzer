@@ -1,4 +1,5 @@
 # app/auth/auth.py
+from app.config import settings
 
 from datetime import datetime, timedelta
 from typing import Optional
@@ -10,9 +11,9 @@ from app.services import get_user_by_id
 from app.models import User
 
 # ----- CONFIG -----
-SECRET_KEY = "your-secret-key"  # Replace with a secure random key in production
+SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
 # ----- SECURITY UTILITIES -----
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")

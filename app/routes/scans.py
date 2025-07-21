@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.services import run_scan_and_analyze, get_user_scans, delete_scan, update_scan
+from app.dependencies.auth import get_current_user
+from app.models import User
+from fastapi import Depends
+from app.utils.responses import success_response
+
 
 router = APIRouter()
 
@@ -21,13 +26,14 @@ def create_scan_route(data: ScanCreateRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ✅ GET /scans/{user_id}
-@router.get("/scans/{user_id}")
-def list_scans(user_id: int):
+@router.get("/scans")
+def list_scans(current_user: User = Depends(get_current_user)):
     try:
-        return get_user_scans(user_id)
+        scans = get_user_scans(current_user)
+        return success_response(scans)
     except Exception as e:
         raise HTTPException(status_code=404, detail=str(e))
+
 
 # ✅ DELETE /scans/{scan_id}
 @router.delete("/scans/{scan_id}")

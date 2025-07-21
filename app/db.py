@@ -1,9 +1,10 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.models import Base  # Make sure to import this
+from app.config import settings
 
 # Connect to your existing database file
-engine = create_engine('sqlite:///../database.db', connect_args={"check_same_thread": False})
+engine = create_engine(seetings.DATABASE_URL)
 
 # Create a session factory
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

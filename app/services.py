@@ -51,16 +51,19 @@ def create_scan(user_id: int, scan_url: str):
     finally:
         session.close()
 
-def get_user_scans(user_id: int):
+from app.models import User  # if not already imported
+
+def get_user_scans(user: User):
     session = SessionLocal()
     try:
-        scans = session.query(Scan).filter(Scan.user_id == user_id).all()
+        scans = session.query(Scan).filter(Scan.user_id == user.id).all()
         return scans
     except Exception as e:
         session.rollback()
         raise e
     finally:
         session.close()
+
 
 def create_header_result(scan_id: int, header_name: str, header_value: str):
     session = SessionLocal()

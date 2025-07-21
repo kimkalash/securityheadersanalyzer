@@ -1,6 +1,11 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from app.services import create_user, get_user_by_id, update_user, delete_user
+from app.dependencies.auth import get_current_user
+from app.models import User
+from fastapi import Depends
+from app.utils.responses import success_response
+
 
 router = APIRouter()
 
@@ -24,19 +29,14 @@ def register_user(data: UserRegisterRequest):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-# ✅ GET /users/{user_id} — Fetch single user
-@router.get("/users/{user_id}")
-def get_user(user_id: int):
-    user = get_user_by_id(user_id)
+
+@router.get("/users/me")
+def get_user(current_user: User = Depends(get_current_user)):
+    user = get_user_by_id(current_user.id)
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     
-    return {
-        "id": user.id,
-        "username": user.username,
-        "email": user.email,
-        "created_at": user.created_at
-    }
+    
 
 # ✅ PUT /users/{user_id} — Update username/email
 @router.put("/users/{user_id}")
