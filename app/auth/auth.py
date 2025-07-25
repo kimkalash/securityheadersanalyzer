@@ -1,23 +1,20 @@
-# app/auth/auth.py
-from app.config import settings
-
 from datetime import datetime, timedelta
 from typing import Optional
-from jose import JWTError, jwt
+from jose import jwt, JWTError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from sqlalchemy.orm import Session
+from app.config import settings
+from app.db import get_db
 from app.services import get_user_by_id
-from app.models import User
 
-# ----- CONFIG -----
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 
-# ----- SECURITY UTILITIES -----
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")  # Login route
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def hash_password(password: str) -> str:
     return pwd_context.hash(password)
@@ -36,14 +33,14 @@ def decode_access_token(token: str):
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: int = payload.get("sub")
         if user_id is None:
-            raise HTTPException(status_code=401, detail="Invalid token: missing subject")
+            raise HTTPException(status_code=401, detail="Invalid token")
         return user_id
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-def get_current_user(token: str = Depends(oauth2_scheme)) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
     user_id = decode_access_token(token)
-    user = get_user_by_id(user_id)
+    user = get_user_by_id(db, user_id)
     if user is None:
         raise HTTPException(status_code=401, detail="User not found")
     return user
