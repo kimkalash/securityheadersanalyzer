@@ -15,13 +15,11 @@ def test_register_user_success():
     assert data["email"] == "alice@mail.com"
 
 def test_register_user_duplicate():
-    # Register the user once
     client.post("/users/", json={
         "username": "bob",
         "email": "bob@mail.com",
         "password": "pass"
     })
-    # Attempt to register with the same username again
     response = client.post("/users/", json={
         "username": "bob",
         "email": "bob2@mail.com",
@@ -30,3 +28,4 @@ def test_register_user_duplicate():
     assert response.status_code == 400
     data = response.json()
     assert "Username already exists" in data["detail"]
+
