@@ -1,8 +1,9 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.auth.auth import get_current_user
-from app.services import create_scan, get_scans_for_user, delete_scan
+from app.core.security import get_current_user
+from app.services.scan_service import create_scan, get_scans_for_user, delete_scan
+
 
 router = APIRouter(prefix="/scans", tags=["scans"])
 
