@@ -19,8 +19,8 @@ class Scan(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     url = Column(String, index=True, nullable=False)
-    result = Column(Text, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    headers = Column(Text, nullable=True)   # new: store analyzed headers
+    created_at = Column(DateTime, default=datetime.utcnow)
 
     user_id = Column(Integer, ForeignKey("users.id"))
     owner = relationship("User", back_populates="scans")
