@@ -1,13 +1,10 @@
+# conftest.py
 import pytest
-from app.db import SessionLocal, Base, engine
+from app.db import Base, engine
 
-@pytest.fixture(scope="function")
-def db_session():
-    # Create tables
+@pytest.fixture(autouse=True)
+def reset_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    session = SessionLocal()
-    try:
-        yield session
-    finally:
-        session.close()
-        Base.metadata.drop_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
