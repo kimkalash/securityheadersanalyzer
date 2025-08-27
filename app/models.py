@@ -18,10 +18,15 @@ class Scan(Base):
     __tablename__ = "scans"
 
     id = Column(Integer, primary_key=True, index=True)
-    url = Column(String, index=True, nullable=False)
-    headers = Column(Text, nullable=True)   # new: store analyzed headers
+    url = Column(String, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"))
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    user_id = Column(Integer, ForeignKey("users.id"))
-    owner = relationship("User", back_populates="scans")
+    # Store headers analysis as JSON (preferred if using Postgres)
+    headers = Column(JSON, nullable=False)
+
+    # If using SQLite (no JSON type), fall back to Text
+    # headers = Column(Text, nullable=False)
+
+    user = relationship("User", back_populates="scans")
 
