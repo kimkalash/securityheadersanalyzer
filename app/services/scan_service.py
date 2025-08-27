@@ -1,29 +1,7 @@
-# ----------- SCAN SERVICES -----------
+import httpx
 import json
 from sqlalchemy.orm import Session
 from app.models import Scan
-
-def create_scan(db: Session, user_id: int, url: str, headers: dict) -> Scan:
-    """
-    Create and persist a Scan record.
-    Headers are stored as JSON (Postgres) or JSON-serialized text (SQLite).
-    """
-    # If using SQLite with Text column, serialize
-    if isinstance(Scan.headers.type.python_type, str):  # crude way to detect Text
-        headers_to_store = json.dumps(headers)
-    else:
-        headers_to_store = headers
-
-    scan = Scan(
-        url=url,
-        user_id=user_id,
-        headers=headers_to_store
-    )
-    db.add(scan)
-    db.commit()
-    db.refresh(scan)
-    return scan
-
 
 def analyze_headers(url: str) -> dict:
     """
@@ -31,7 +9,6 @@ def analyze_headers(url: str) -> dict:
     Returns a dict with header statuses: strong, weak, or missing.
     """
 
-    # Initialize result container
     results = {}
 
     try:
@@ -105,4 +82,40 @@ def analyze_headers(url: str) -> dict:
         "url": url,
         "headers": results
     }
+
+
+def create_scan(db: Session, user_id: int, url: str, headers: dict) -> Scan:
+    """
+    Create and persist a Scan record.
+    Handles Postgres JSON and SQLite Text storage.
+    """
+    if isinstance(Scan.headers.type.python_type, str):  # SQLite with Text
+        headers_to_store = json.dumps(headers)
+    else:  # Postgres JSON
+        headers_to_store = headers
+
+    scan = Scan(url=url, user_id=user_id, headers=headers_to_store)
+    db.add(scan)
+    db.commit()
+    db.refresh(scan)
+    return scan
+
+
+def get_scans_for_user(db: Session, user_id: int):
+    """
+    Retrieve all scans belonging to a user.
+    """
+    return db.query(Scan).filter(Scan.user_id == user_id).all()
+
+
+def delete_scan(db: Session, scan_id: int, user_id: int):
+    """
+    Delete a scan if it belongs to the user.
+    """
+    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == user_id).first()
+    if not scan:
+        return {"error": "Scan not found"}
+    db.delete(scan)
+    db.commit()
+    return {"message": "Scan deleted"}
 
