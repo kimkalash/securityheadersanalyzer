@@ -1,9 +1,9 @@
 # app/services/scan_service.py
-# app/services/scan_service.py
 from sqlalchemy.orm import Session
 from app.models import Scan
-from datetime import datetime
+from datetime import datetime, timezone
 import httpx
+
 
 # Analyze headers
 def analyze_headers(url: str) -> dict:
@@ -23,6 +23,7 @@ def analyze_headers(url: str) -> dict:
     }
 
     return {"url": url, "headers": inspected}
+
 
 # Helper to classify header value
 def evaluate_header(name: str, value: str | None) -> str:
@@ -79,14 +80,21 @@ def evaluate_header(name: str, value: str | None) -> str:
 
 # DB services
 def create_scan(db: Session, user_id: int, url: str, headers: dict) -> Scan:
-    scan = Scan(user_id=user_id, url=url, headers=headers, created_at=datetime.utcnow())
+    scan = Scan(
+        user_id=user_id,
+        url=url,
+        headers=headers,
+        created_at=datetime.now(timezone.utc),  # ✅ fixed
+    )
     db.add(scan)
     db.commit()
     db.refresh(scan)
     return scan
 
+
 def get_scans_for_user(db: Session, user_id: int) -> list[Scan]:
     return db.query(Scan).filter(Scan.user_id == user_id).all()
+
 
 def delete_scan(db: Session, scan_id: int, user_id: int) -> dict:
     scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == user_id).first()
@@ -95,4 +103,3 @@ def delete_scan(db: Session, scan_id: int, user_id: int) -> dict:
     db.delete(scan)
     db.commit()
     return {"message": "Scan deleted"}
-

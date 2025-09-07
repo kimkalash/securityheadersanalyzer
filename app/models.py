@@ -1,7 +1,7 @@
 # app/models.py
-from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON, func
+from sqlalchemy import Column, Integer, String, ForeignKey, DateTime, JSON
 from sqlalchemy.orm import relationship
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.db import Base
 
@@ -27,7 +27,7 @@ class Scan(Base):
 
     created_at = Column(
         DateTime(timezone=True),
-        default=datetime.utcnow,   # DB/ORM on insert
+        default=lambda: datetime.now(timezone.utc),  # ✅ timezone-aware UTC
         nullable=False,
     )
 
@@ -36,4 +36,5 @@ class Scan(Base):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         if not self.created_at:
-            self.created_at = datetime.utcnow()
+            self.created_at = datetime.now(timezone.utc)  # ✅ fixed
+
