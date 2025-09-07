@@ -1,105 +1,55 @@
-# app/services/scan_service.py
+# app/core/security.py
+from passlib.context import CryptContext
+from datetime import datetime, timedelta, timezone
+from jose import jwt, JWTError
+from fastapi import Depends, HTTPException
+from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from app.models import Scan
-from datetime import datetime, timezone
-import httpx
+
+from app.db import get_db
+from app.models import User
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
+
+SECRET_KEY = "secret"  # in production load from env
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
-# Analyze headers
-def analyze_headers(url: str) -> dict:
-    try:
-        response = httpx.get(url, follow_redirects=True, timeout=10.0)
-        headers = response.headers
-    except Exception as e:
-        return {"error": str(e)}
-
-    inspected = {
-        "Strict-Transport-Security": evaluate_header("Strict-Transport-Security", headers.get("Strict-Transport-Security")),
-        "Content-Security-Policy": evaluate_header("Content-Security-Policy", headers.get("Content-Security-Policy")),
-        "X-Frame-Options": evaluate_header("X-Frame-Options", headers.get("X-Frame-Options")),
-        "X-Content-Type-Options": evaluate_header("X-Content-Type-Options", headers.get("X-Content-Type-Options")),
-        "Referrer-Policy": evaluate_header("Referrer-Policy", headers.get("Referrer-Policy")),
-        "Permissions-Policy": evaluate_header("Permissions-Policy", headers.get("Permissions-Policy")),
-    }
-
-    return {"url": url, "headers": inspected}
+def get_password_hash(password: str) -> str:
+    return pwd_context.hash(password)
 
 
-# Helper to classify header value
-def evaluate_header(name: str, value: str | None) -> str:
-    if not value:
-        return "missing"
-
-    val = value.lower()
-
-    # Strict-Transport-Security: must have long max-age
-    if name == "Strict-Transport-Security":
-        if "max-age" in val:
-            try:
-                age = int(val.split("max-age=")[1].split(";")[0])
-                if age >= 31536000:
-                    return "strong"
-                else:
-                    return "weak"
-            except Exception:
-                return "weak"
-        return "weak"
-
-    # X-Frame-Options
-    if name == "X-Frame-Options":
-        if val in ["deny", "sameorigin"]:
-            return "strong"
-        return "weak"
-
-    # X-Content-Type-Options
-    if name == "X-Content-Type-Options":
-        if val == "nosniff":
-            return "strong"
-        return "weak"
-
-    # Content-Security-Policy
-    if name == "Content-Security-Policy":
-        if "default-src" in val and "'self'" in val:
-            return "strong"
-        return "weak"
-
-    # Referrer-Policy
-    if name == "Referrer-Policy":
-        if "no-referrer" in val or "strict-origin" in val:
-            return "strong"
-        return "weak"
-
-    # Permissions-Policy
-    if name == "Permissions-Policy":
-        if "()" in val or val.strip() == "":
-            return "strong"
-        return "weak"
-
-    return "weak"
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    return pwd_context.verify(plain_password, hashed_password)
 
 
-# DB services
-def create_scan(db: Session, user_id: int, url: str, headers: dict) -> Scan:
-    scan = Scan(
-        user_id=user_id,
-        url=url,
-        headers=headers,
-        created_at=datetime.now(timezone.utc),  # ✅ fixed
+def create_access_token(
+    data: dict,
+    expires_delta: timedelta | None = None,
+    secret: str = SECRET_KEY,
+    algorithm: str = ALGORITHM,
+):
+    to_encode = data.copy()
+    expire = datetime.now(timezone.utc) + (
+        expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     )
-    db.add(scan)
-    db.commit()
-    db.refresh(scan)
-    return scan
+    to_encode.update({"exp": expire})
+    return jwt.encode(to_encode, secret, algorithm=algorithm)
 
 
-def get_scans_for_user(db: Session, user_id: int) -> list[Scan]:
-    return db.query(Scan).filter(Scan.user_id == user_id).all()
-
-
-def delete_scan(db: Session, scan_id: int, user_id: int) -> dict:
-    scan = db.query(Scan).filter(Scan.id == scan_id, Scan.user_id == user_id).first()
-    if not scan:
-        return {"message": "Scan not found"}
-    db.delete(scan)
-    db.commit()
-    return {"message": "Scan deleted"}
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)
+):
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token")
+        user = db.query(User).filter(User.id == int(user_id)).first()
+        if not user:
+            raise HTTPException(status_code=401, detail="User not found")
+        return user
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid authentication credentials")

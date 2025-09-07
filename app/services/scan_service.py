@@ -79,17 +79,20 @@ def evaluate_header(name: str, value: str | None) -> str:
 
 
 # DB services
+from datetime import datetime, timezone
+
 def create_scan(db: Session, user_id: int, url: str, headers: dict) -> Scan:
     scan = Scan(
         user_id=user_id,
         url=url,
         headers=headers,
-        created_at=datetime.now(timezone.utc),  # ✅ fixed
+        created_at=datetime.now(timezone.utc)   # ✅ timezone-aware, no deprecation warning
     )
     db.add(scan)
     db.commit()
     db.refresh(scan)
     return scan
+
 
 
 def get_scans_for_user(db: Session, user_id: int) -> list[Scan]:
