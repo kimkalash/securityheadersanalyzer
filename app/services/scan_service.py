@@ -14,41 +14,65 @@ def analyze_headers(url: str) -> dict:
         return {"error": str(e)}
 
     inspected = {
-        "Strict-Transport-Security": evaluate_header(headers.get("Strict-Transport-Security")),
-        "Content-Security-Policy": evaluate_header(headers.get("Content-Security-Policy")),
-        "X-Frame-Options": evaluate_header(headers.get("X-Frame-Options")),
-        "X-Content-Type-Options": evaluate_header(headers.get("X-Content-Type-Options")),
-        "Referrer-Policy": evaluate_header(headers.get("Referrer-Policy")),
-        "Permissions-Policy": evaluate_header(headers.get("Permissions-Policy")),
+        "Strict-Transport-Security": evaluate_header("Strict-Transport-Security", headers.get("Strict-Transport-Security")),
+        "Content-Security-Policy": evaluate_header("Content-Security-Policy", headers.get("Content-Security-Policy")),
+        "X-Frame-Options": evaluate_header("X-Frame-Options", headers.get("X-Frame-Options")),
+        "X-Content-Type-Options": evaluate_header("X-Content-Type-Options", headers.get("X-Content-Type-Options")),
+        "Referrer-Policy": evaluate_header("Referrer-Policy", headers.get("Referrer-Policy")),
+        "Permissions-Policy": evaluate_header("Permissions-Policy", headers.get("Permissions-Policy")),
     }
 
     return {"url": url, "headers": inspected}
 
 # Helper to classify header value
-def evaluate_header(value: str | None) -> str:
-    if value is None:
+def evaluate_header(name: str, value: str | None) -> str:
+    if not value:
         return "missing"
+
     val = value.lower()
 
     # Strict-Transport-Security: must have long max-age
-    if "max-age" in val:
-        try:
-            age = int(val.split("max-age=")[1].split(";")[0])
-            if age >= 31536000:
-                return "strong"
-            else:
+    if name == "Strict-Transport-Security":
+        if "max-age" in val:
+            try:
+                age = int(val.split("max-age=")[1].split(";")[0])
+                if age >= 31536000:
+                    return "strong"
+                else:
+                    return "weak"
+            except Exception:
                 return "weak"
-        except Exception:
-            return "weak"
+        return "weak"
 
-    if "deny" in val or "sameorigin" in val:
-        return "strong"
+    # X-Frame-Options
+    if name == "X-Frame-Options":
+        if val in ["deny", "sameorigin"]:
+            return "strong"
+        return "weak"
 
-    if val == "nosniff":
-        return "strong"
+    # X-Content-Type-Options
+    if name == "X-Content-Type-Options":
+        if val == "nosniff":
+            return "strong"
+        return "weak"
 
-    if "strict" in val or "'self'" in val:
-        return "strong"
+    # Content-Security-Policy
+    if name == "Content-Security-Policy":
+        if "default-src" in val and "'self'" in val:
+            return "strong"
+        return "weak"
+
+    # Referrer-Policy
+    if name == "Referrer-Policy":
+        if "no-referrer" in val or "strict-origin" in val:
+            return "strong"
+        return "weak"
+
+    # Permissions-Policy
+    if name == "Permissions-Policy":
+        if "()" in val or val.strip() == "":
+            return "strong"
+        return "weak"
 
     return "weak"
 
