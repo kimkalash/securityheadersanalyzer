@@ -6,7 +6,6 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.db import get_db
-from app.services.user_service import get_user_by_id
 from app.core.config import settings
 SECRET_KEY = settings.SECRET_KEY
 ALGORITHM = settings.JWT_ALGORITHM
@@ -15,17 +14,24 @@ ACCESS_TOKEN_EXPIRE_MINUTES = settings.ACCESS_TOKEN_EXPIRE_MINUTES
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
-def hash_password(password: str) -> str:
+def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+def create_access_token(
+    data: dict,
+    expires_delta: Optional[timedelta] = None,
+    secret: str = SECRET_KEY,
+    algorithm: str = ALGORITHM
+):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    return jwt.encode(to_encode, secret, algorithm=algorithm)
+
 
 def decode_access_token(token: str):
     try:
@@ -38,6 +44,7 @@ def decode_access_token(token: str):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    from app.services.user_service import get_user_by_id
     user_id = decode_access_token(token)
     user = get_user_by_id(db, user_id)
     if user is None:
