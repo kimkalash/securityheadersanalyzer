@@ -1,12 +1,20 @@
 from pydantic_settings import BaseSettings
 
+
 class Settings(BaseSettings):
-    SECRET_KEY: str = "supersecret"
-    JWT_ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    DATABASE_URL: str = "sqlite:///./database.db"
+    # Secrets - must be provided via env or .env
+    secret_key: str
+    jwt_algorithm: str = "HS256"
+
+    # App config
+    access_token_expire_minutes: int = 30
+
+    # Database
+    database_url: str = "sqlite:///./database.db"
 
     class Config:
         env_file = ".env"
+        env_file_encoding = "utf-8"
+
 
 settings = Settings()
