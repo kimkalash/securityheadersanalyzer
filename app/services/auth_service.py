@@ -15,7 +15,8 @@ def login_user(db: Session, username: str, password: str) -> dict | None:
     if not user:
         return None
 
-    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
+
     token = create_access_token(data={"sub": str(user.id)}, expires_delta=access_token_expires)
 
     return {"access_token": token, "token_type": "bearer"}
