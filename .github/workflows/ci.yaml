@@ -11,11 +11,11 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout your repo
+      # 1. Checkout repo
       - name: Checkout code
         uses: actions/checkout@v4
 
-      # 2. Set up Python for tests
+      # 2. Set up Python
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
@@ -28,9 +28,14 @@ jobs:
           pip install -r requirements.txt
           pip install pytest
 
-      # 4. Run tests
+      # 4. Run tests with dummy secrets from GitHub
       - name: Run tests
         run: pytest -v
+        env:
+          DATABASE_URL: ${{ secrets.TEST_DATABASE_URL }}
+          SECRET_KEY: ${{ secrets.TEST_SECRET_KEY }}
+          JWT_ALGORITHM: ${{ secrets.TEST_JWT_ALGORITHM }}
+          ACCESS_TOKEN_EXPIRE_MINUTES: ${{ secrets.TEST_ACCESS_TOKEN_EXPIRE_MINUTES }}
 
       # 5. Log in to Docker Hub
       - name: Log in to Docker Hub
