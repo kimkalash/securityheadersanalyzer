@@ -4,6 +4,11 @@
 tasks:
   - name: Setup Env and Tools
     init: |
+      # --- Restore SSH private key from Gitpod env vars ---
+      mkdir -p ~/.ssh
+      echo "$ssh_private_key" > ~/.ssh/gitpod-key2
+      chmod 600 ~/.ssh/gitpod-key2
+
       # --- Generate .env from Gitpod env vars ---
       echo "SECRET_KEY=${SECRET_KEY}" > .env
       echo "JWT_ALGORITHM=${JWT_ALGORITHM}" >> .env
