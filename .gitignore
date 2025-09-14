@@ -1,4 +1,5 @@
 .env
-awscliv2.zip
 terraform.zip
+terraform
+.awscliv2.zip
 aws/
