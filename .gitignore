@@ -3,3 +3,7 @@ terraform.zip
 terraform
 .awscliv2.zip
 aws/
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
