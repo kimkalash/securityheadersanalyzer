@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import User
-
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
@@ -17,16 +16,21 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 def get_password_hash(password: str) -> str:
-    # bcrypt only supports passwords up to 72 bytes
-    if len(password) > 72:
+    # bcrypt only supports up to 72 bytes
+    if len(password.encode("utf-8")) > 72:
         password = password[:72]
     return pwd_context.hash(password)
 
-
-
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # truncate plain password the same way
+    if len(plain_password.encode("utf-8")) > 72:
+        plain_password = plain_password[:72]
     return pwd_context.verify(plain_password, hashed_password)
+
 
 
 def create_access_token(
