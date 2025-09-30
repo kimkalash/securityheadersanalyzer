@@ -1,4 +1,3 @@
-# app/core/security.py
 from passlib.context import CryptContext
 from datetime import datetime, timedelta, timezone
 from jose import jwt, JWTError
@@ -8,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.models import User
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 SECRET_KEY = "secret"  # in production load from env
@@ -20,21 +19,28 @@ class SafeCryptContext(CryptContext):
     def hash(self, password, **kwargs):
         if isinstance(password, str):
             password = password.encode("utf-8")
+        print(f"[DEBUG] Hashing password of length {len(password)}")
         if len(password) > 72:
             password = password[:72]
+            print(f"[DEBUG] Password truncated to 72 bytes")
         return super().hash(password, **kwargs)
 
     def verify(self, password, hash, **kwargs):
         if isinstance(password, str):
             password = password.encode("utf-8")
+        print(f"[DEBUG] Verifying password of length {len(password)}")
         if len(password) > 72:
             password = password[:72]
+            print(f"[DEBUG] Password truncated to 72 bytes for verification")
         return super().verify(password, hash, **kwargs)
+
 
 pwd_context = SafeCryptContext(schemes=["bcrypt"], deprecated="auto")
 
+
 def get_password_hash(password: str) -> str:
     return pwd_context.hash(password)
+
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
@@ -68,3 +74,5 @@ def get_current_user(
         return user
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid authentication credentials")
+
+
