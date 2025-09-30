@@ -14,3 +14,5 @@ passlib[bcrypt]==1.7.4
 orjson==3.10.18
 alembic
 psycopg2-binary
+bcrypt==3.2.2
+passlib==1.7.4
